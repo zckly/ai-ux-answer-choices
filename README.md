@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI UX Pattern #1: Multiple Choice Responses
+
+This is a demo of how you can use OpenAI, NextJS, and Vercel's AI library to generate multiple choice options for a chatbot UI.
+
+Made by [Zachary](https://twitter.com/wenquai)
 
 ## Getting Started
 

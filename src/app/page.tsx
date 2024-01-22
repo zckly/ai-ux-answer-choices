@@ -1,112 +1,141 @@
-import Image from "next/image";
+"use client";
+import { useChat } from "ai/react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+const userPrompt = `You are a world-class Spanish tutor. Your task is to teach me greetings in Spanish.
+Always end your response with multiple choice options for me to choose from, starting with "## OPTIONS".
+Here's an example of how your response should look:
+You: <Your response>
+## OPTIONS
+A. <Option 1>
+B. <Option 2>
+C. <Option 3>`;
 
 export default function Home() {
+  // This state is for storing the answer choices
+  const [answerChoices, setAnswerChoices] = useState<string[]>([]);
+  // This state is for storing the user input
+  const [input, setInput] = useState<string>("");
+  const { messages, setMessages, append } = useChat({
+    initialMessages: [
+      {
+        id: "SYSTEM",
+        role: "system",
+        content: `You are a world-class Spanish tutor. Always respond in English.`,
+      },
+    ],
+  });
+  // This ref is needed to make sure our useEffect only runs once in development mode
+  const effectRan = useRef(false);
+
+  async function initializeChat() {
+    await append({
+      role: "user",
+      content: userPrompt,
+    });
+  }
+
+  // Initialize chat on mount
+  useEffect(() => {
+    // Hack to make sure this useEffect only runs once, on mount
+    if (!effectRan.current || process.env.NODE_ENV !== "development") {
+      initializeChat();
+    }
+
+    return () => {
+      effectRan.current = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // This useEffect is for converting the last assistant message into answer choices
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (
+      lastMessage.role === "assistant" &&
+      lastMessage.content.includes("## OPTIONS")
+    ) {
+      const options = lastMessage.content
+        .split("## OPTIONS")[1]
+        .split("\n")
+        .filter((option) => option.trim() !== "");
+      setAnswerChoices(options);
+    }
+  }, [messages]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
+    <main className="flex min-h-screen flex-col items-center justify-between p-24 max-w-prose mx-auto">
+      <div className="text-center">
+        <h3 className="font-bold text-lg">
+          AI UX Patterns: Multiple Choice Chatbot
+        </h3>
+        <p className="text-gray-300 text-sm">
+          This is a demo of a Spanish tutoring chatbot that generates multiple
+          choice options for the user to choose from.
         </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <p className="text-blue-200 text-sm">
+          Made by <Link href="https://twitter.com/wenquai">@wenquai</Link>
+        </p>
+      </div>
+      <div className="flex flex-col space-y-4 max-h-[600px] overflow-auto">
+        {messages.slice(2).map((message) => (
+          <div
+            key={message.id}
+            className={`flex flex-col space-y-2 ${
+              message.role === "user" ? "text-gray-400" : ""
+            }`}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            <Markdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                li: ({ node, ...props }) => {
+                  return <li className="list-disc list-inside" {...props} />;
+                },
+              }}
+            >
+              {message.content.split("## OPTIONS")[0]}
+            </Markdown>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col space-y-4">
+        {answerChoices.map((choice, index) => (
+          <button
+            key={index}
+            className="bg-blue-500 text-white rounded-md py-2 px-4"
+            onClick={() => {
+              append({
+                role: "user",
+                content: choice,
+              });
+              setAnswerChoices([]);
+            }}
+          >
+            {choice}
+          </button>
+        ))}
+        <div className="flex items-center">
+          <input
+            className="border rounded-md p-2 flex-grow"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button
+            className="bg-blue-500 text-white rounded-md py-2 px-4 ml-2"
+            onClick={() => {
+              append({
+                role: "user",
+                content: input,
+              });
+              setAnswerChoices([]);
+            }}
+          >
+            Send
+          </button>
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
       </div>
     </main>
   );
