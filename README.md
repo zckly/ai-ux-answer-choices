@@ -6,7 +6,13 @@ Made by [Zachary](https://twitter.com/wenquai)
 
 ## Getting Started
 
-First, run the development server:
+Make sure to add your OPENAI_API_KEY to .env.local
+
+```bash
+cp .env.example .env.local
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
